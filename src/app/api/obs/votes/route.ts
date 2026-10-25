@@ -3,6 +3,6 @@ import { createSseResponse } from "@/lib/sse";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
-  return createSseResponse((send) => subscribeObsVotes(send));
+export async function GET(request: Request) {
+  return createSseResponse(request.signal, (send) => subscribeObsVotes(send));
 }

@@ -13,7 +13,7 @@ type RouteContext = {
   params: Promise<{ session_id: string }>;
 };
 
-export async function GET(_request: Request, context: RouteContext) {
+export async function GET(request: Request, context: RouteContext) {
   const session = await auth();
   if (!session) {
     return new Response("Unauthorized", { status: 401 });
@@ -32,6 +32,7 @@ export async function GET(_request: Request, context: RouteContext) {
 
   const initial = await buildSessionScoresPayload(id);
   return createSseResponse(
+    request.signal,
     (send) => subscribeSessionScores(id, send),
     initial,
   );

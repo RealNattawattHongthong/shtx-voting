@@ -4,7 +4,7 @@ import { createSseResponse } from "@/lib/sse";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: Request) {
   const initial = await getLiveAudienceState();
-  return createSseResponse((send) => subscribeAudience(send), initial);
+  return createSseResponse(request.signal, (send) => subscribeAudience(send), initial);
 }

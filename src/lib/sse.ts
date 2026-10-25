@@ -1,4 +1,5 @@
 export function createSseResponse(
+  signal: AbortSignal,
   subscribe: (send: (data: unknown) => void) => () => void,
   initialData?: unknown,
 ): Response {
@@ -7,26 +8,44 @@ export function createSseResponse(
 
   const stream = new ReadableStream({
     start(controller) {
-      const send = (data: unknown) => {
-        controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify(data)}\n\n`),
-        );
+      let closed = false;
+      // Next.js does not reliably cancel the stream when the client goes away; enqueue on a closed
+      // controller throws, which kills the process from the heartbeat timer and fails every vote's publish.
+      const write = (chunk: string) => {
+        if (closed) return;
+        try {
+          controller.enqueue(encoder.encode(chunk));
+        } catch {
+          cleanup?.();
+        }
       };
+      const send = (data: unknown) => write(`data: ${JSON.stringify(data)}\n\n`);
 
+      const unsubscribe = subscribe(send);
+      const heartbeat = setInterval(() => write(": heartbeat\n\n"), 15000);
+
+      cleanup = () => {
+        if (closed) return;
+        closed = true;
+        clearInterval(heartbeat);
+        unsubscribe();
+        signal.removeEventListener("abort", onAbort);
+        try {
+          controller.close();
+        } catch {
+          // already closed
+        }
+      };
+      const onAbort = () => cleanup?.();
+      signal.addEventListener("abort", onAbort);
+
+      if (signal.aborted) {
+        cleanup();
+        return;
+      }
       if (initialData !== undefined) {
         send(initialData);
       }
-
-      const unsubscribe = subscribe(send);
-
-      const heartbeat = setInterval(() => {
-        controller.enqueue(encoder.encode(": heartbeat\n\n"));
-      }, 15000);
-
-      cleanup = () => {
-        clearInterval(heartbeat);
-        unsubscribe();
-      };
     },
     cancel() {
       cleanup?.();

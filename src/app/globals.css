@@ -886,12 +886,12 @@ body {
 .xp-app--admin main {
   display: flex;
   flex-direction: column;
-  flex: 1;
-  min-height: 0;
+  flex: 1 0 auto;
 }
 
+/* grow to fill, never shrink: .xp-listview is overflow: hidden, so a shrunk list clips rows and .xp-client can't scroll */
 .xp-app--admin .xp-listview {
-  flex: 1;
+  flex: 1 0 auto;
 }
 
 .xp-app--admin .xp-inset-statusbar {
